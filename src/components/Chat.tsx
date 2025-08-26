@@ -9,6 +9,12 @@ interface Message {
   timestamp: Date;
 }
 
+interface FormData {
+  submitForm: boolean;
+  mandatoryInfoQueried: boolean;
+  // Other form fields
+}
+
 interface ChatResponse {
   sessionId: number;
   userMessage: string;
@@ -16,6 +22,9 @@ interface ChatResponse {
   category: string;
   grievanceId?: number;
   grievanceNumber?: string;
+  submitForm?: boolean;
+  mandatoryInfoQueried?: boolean;
+  formData?: string;
 }
 
 const Chat: React.FC = () => {
@@ -25,6 +34,7 @@ const Chat: React.FC = () => {
   const [sessionId, setSessionId] = useState<number | undefined>();
   const [error, setError] = useState<string>('');
   const [welcomeMessageAdded, setWelcomeMessageAdded] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user } = useAuth();
 
@@ -41,7 +51,7 @@ const Chat: React.FC = () => {
     if (isAuthenticated && user && !welcomeMessageAdded) {
       const welcomeMessage: Message = {
         type: 'ai',
-        content: `Hello ${user.firstName}! I'm here to help you with your grievances and general inquiries. How can I assist you today?`,
+        content: `Hello ${user.firstName}! I'm here to help you file a complaint. Please describe the issue you're facing.`,
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
@@ -52,6 +62,7 @@ const Chat: React.FC = () => {
       setWelcomeMessageAdded(false);
       setSessionId(undefined);
       setError('');
+      setFormSubmitted(false);
     }
   }, [isAuthenticated, user, welcomeMessageAdded]);
 
@@ -96,8 +107,28 @@ const Chat: React.FC = () => {
 
       setMessages(prev => [...prev, aiMessage]);
 
+      // Check for form submission flags
+      if (data.submitForm && data.mandatoryInfoQueried && data.formData) {
+        try {
+          // Parse the form data to display a confirmation
+          const formData = JSON.parse(data.formData);
+          console.log('Form submitted:', formData);
+          
+          // Show confirmation message
+          const confirmationMessage: Message = {
+            type: 'ai',
+            content: `✅ Your complaint has been successfully submitted! Reference ID: ${data.grievanceNumber}`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, confirmationMessage]);
+          setFormSubmitted(true);
+        } catch (e) {
+          console.error('Error parsing form data:', e);
+        }
+      }
+      
       // Show grievance info if created
-      if (data.grievanceId) {
+      else if (data.grievanceId) {
         const grievanceMessage: Message = {
           type: 'ai',
           content: `📋 Your grievance has been logged with ID: ${data.grievanceNumber}. Category: ${data.category}`,
@@ -143,13 +174,31 @@ const Chat: React.FC = () => {
     setError('');
   }, []);
 
+  const startNewChat = useCallback(() => {
+    setMessages([]);
+    setSessionId(undefined);
+    setFormSubmitted(false);
+    
+    const welcomeMessage: Message = {
+      type: 'ai',
+      content: `Hello ${user?.firstName}! I'm here to help you file a new complaint. Please describe the issue you're facing.`,
+      timestamp: new Date(),
+    };
+    setMessages([welcomeMessage]);
+  }, [user]);
+
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h2>Grievance Redressal Chat</h2>
+        <h2>Cyber Crime Complaint Registration</h2>
         <div className="chat-info">
           {sessionId && <span className="session-id">Session: {sessionId}</span>}
           {user && <span className="user-name">User: {user.username}</span>}
+          {formSubmitted && (
+            <button onClick={startNewChat} className="new-chat-button">
+              Start New Complaint
+            </button>
+          )}
         </div>
       </div>
       
@@ -187,11 +236,14 @@ const Chat: React.FC = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Type your message or grievance here..."
+          placeholder={formSubmitted ? "Complaint submitted. Start a new chat for another complaint." : "Type your message here..."}
           rows={3}
-          disabled={loading}
+          disabled={loading || formSubmitted}
         />
-        <button onClick={sendMessage} disabled={loading || !input.trim()}>
+        <button 
+          onClick={sendMessage} 
+          disabled={loading || !input.trim() || formSubmitted}
+        >
           Send
         </button>
       </div>

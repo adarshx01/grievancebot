@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import Chat from './components/Chat';
+import ComplaintsList from './components/ComplaintsList';
 import { testConnection } from './services/api';
 import './App.css';
 
@@ -47,6 +48,7 @@ const ConnectionStatus: React.FC = () => {
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, logout, loading } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'complaints'>('chat');
 
   const toggleToRegister = useCallback(() => {
     setShowRegister(true);
@@ -98,7 +100,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Grievance Redressal System</h1>
+        <h1>Cyber Crime Complaint System</h1>
         <div className="user-info">
           <span>Welcome, {user?.firstName} {user?.lastName}</span>
           <button onClick={logout} className="logout-button">
@@ -109,8 +111,23 @@ const AppContent: React.FC = () => {
       
       <ConnectionStatus />
       
+      <div className="app-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          File New Complaint
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'complaints' ? 'active' : ''}`}
+          onClick={() => setActiveTab('complaints')}
+        >
+          View My Complaints
+        </button>
+      </div>
+      
       <main className="app-main">
-        <Chat />
+        {activeTab === 'chat' ? <Chat /> : <ComplaintsList />}
       </main>
     </div>
   );

@@ -304,15 +304,51 @@
   cursor: not-allowed;
 }
 
+/* Form submission styles */
+.new-chat-button {
+  background-color: #4a8bf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.2s;
+}
+
+.new-chat-button:hover {
+  background-color: #3a7ae5;
+}
+
+.form-submitted .chat-input {
+  opacity: 0.7;
+}
+
 .chat-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 0.25rem;
   font-size: 0.8rem;
 }
 
-.user-name {
-  opacity: 0.9;
+/* Chat message for form data */
+.message-content.form-data {
+  background-color: #f0f8ff;
+  border: 1px solid #b8d8ff;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 5px 0;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+.message-content.confirmation {
+  background-color: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  color: #2e7d32;
+  font-weight: 500;
 }
 
 .error-banner {
@@ -387,4 +423,156 @@
 
 .connection-status.disconnected button:hover {
   background-color: #b91c1c;
+}
+
+/* Tabs */
+.app-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tab-button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-button.active {
+  background-color: #4a8bf6;
+  color: white;
+}
+
+/* Complaints List */
+.complaints-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.complaints-list table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.complaints-list th, 
+.complaints-list td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.complaints-list th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+}
+
+.complaints-list tr:hover {
+  background-color: #f5f8ff;
+}
+
+.view-button {
+  background-color: #4a8bf6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status.open {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.status.in_progress {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.status.resolved {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status.closed {
+  background-color: #f5f5f5;
+  color: #616161;
+}
+
+.refresh-button {
+  margin-top: 15px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Complaint Details */
+.complaint-details {
+  margin-top: 15px;
+}
+
+.back-button {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 8px 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  cursor: pointer;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  padding: 15px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.detail-label {
+  font-weight: 600;
+  width: 150px;
+  flex-shrink: 0;
+}
+
+.detail-text {
+  white-space: pre-line;
+}
+
+.detail-json {
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 400px;
+}
+
+.detail-json pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+tr.form-submitted {
+  background-color: #f0f7ff;
 }
