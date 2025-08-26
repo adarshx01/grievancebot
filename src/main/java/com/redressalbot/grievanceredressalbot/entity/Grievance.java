@@ -42,4 +42,19 @@ public class Grievance {
     
     @Column(name = "grievance_number", unique = true)
     private String grievanceNumber;
+    
+    // Add these fields for structured form data
+    @Column(columnDefinition = "TEXT")
+    private String formDataJson;
+    
+    private boolean formSubmitted = false;
+    
+    private String complaintType;
+    private String victimName;
+    private String victimContact;
+    private String incidentDate;
+    private String incidentLocation;
+    
+    @Column(columnDefinition = "TEXT")
+    private String incidentSummary;
 }

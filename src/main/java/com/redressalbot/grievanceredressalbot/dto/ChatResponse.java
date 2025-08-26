@@ -12,6 +12,11 @@ public class ChatResponse {
     private String userMessage;
     private String aiResponse;
     private String category;
-    private Long grievanceId; // If it's a grievance
+    private Long grievanceId;
     private String grievanceNumber;
+    
+    // Form submission flags
+    private boolean submitForm = false;
+    private boolean mandatoryInfoQueried = false;
+    private String formData; // JSON string containing the structured form data
 }

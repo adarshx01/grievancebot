@@ -1,9 +1,13 @@
 package com.redressalbot.grievanceredressalbot.service;
 
 import com.redressalbot.grievanceredressalbot.entity.Grievance;
+import com.redressalbot.grievanceredressalbot.entity.User;
 import com.redressalbot.grievanceredressalbot.repository.GrievanceRepository;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -11,6 +15,19 @@ public class GrievanceService {
     
     private final GrievanceRepository grievanceRepository;
     private final GeminiService geminiService;
+    
+    public List<Grievance> getUserGrievances(User user) {
+        return grievanceRepository.findByUserOrderByCreatedAtDesc(user);
+    }
+    
+    public Optional<Grievance> getGrievanceById(Long id, User user) {
+        return grievanceRepository.findById(id)
+                .filter(grievance -> grievance.getUser().getId().equals(user.getId()));
+    }
+    
+    public List<Grievance> getAllGrievances() {
+        return grievanceRepository.findAll();
+    }
     
     public Grievance processGrievance(String userMessage) {
         // Create and save grievance
