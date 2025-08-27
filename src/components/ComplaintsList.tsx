@@ -13,6 +13,7 @@ interface Complaint {
   status: string;
   createdAt: string;
   formSubmitted: boolean;
+  emergency: boolean;
 }
 
 interface ComplaintDetail extends Complaint {
@@ -86,7 +87,12 @@ const ComplaintsList: React.FC = () => {
       {selectedComplaint ? (
         <div className="complaint-details">
           <button onClick={closeDetails} className="back-button">← Back to list</button>
-          <h3>Complaint #{selectedComplaint.grievanceNumber}</h3>
+          <h3>
+            Complaint #{selectedComplaint.grievanceNumber}
+            {selectedComplaint.emergency && (
+              <span className="emergency-badge">EMERGENCY</span>
+            )}
+          </h3>
           
           <div className="detail-section">
             <h4>Basic Information</h4>
@@ -100,7 +106,10 @@ const ComplaintsList: React.FC = () => {
             </div>
             <div className="detail-row">
               <div className="detail-label">Complaint Type:</div>
-              <div className="detail-value">{selectedComplaint.complaintType}</div>
+              <div className="detail-value">
+                {selectedComplaint.complaintType}
+                {selectedComplaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
+              </div>
             </div>
             <div className="detail-row">
               <div className="detail-label">Incident Date:</div>
@@ -155,10 +164,19 @@ const ComplaintsList: React.FC = () => {
                 </thead>
                 <tbody>
                   {complaints.map((complaint) => (
-                    <tr key={complaint.id} className={complaint.formSubmitted ? 'form-submitted' : ''}>
+                    <tr 
+                      key={complaint.id} 
+                      className={`
+                        ${complaint.formSubmitted ? 'form-submitted' : ''}
+                        ${complaint.emergency ? 'emergency' : ''}
+                      `}
+                    >
                       <td>{complaint.grievanceNumber}</td>
                       <td>{complaint.victimName || 'Unknown'}</td>
-                      <td>{complaint.complaintType || complaint.status}</td>
+                      <td>
+                        {complaint.complaintType || complaint.status}
+                        {complaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
+                      </td>
                       <td>{formatDate(complaint.createdAt)}</td>
                       <td className={`status ${complaint.status.toLowerCase()}`}>{complaint.status}</td>
                       <td>

@@ -9,12 +9,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface FormData {
-  submitForm: boolean;
-  mandatoryInfoQueried: boolean;
-  // Other form fields
-}
-
 interface ChatResponse {
   sessionId: number;
   userMessage: string;
@@ -35,6 +29,8 @@ const Chat: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [welcomeMessageAdded, setWelcomeMessageAdded] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencyDetails, setEmergencyDetails] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user } = useAuth();
 
@@ -187,6 +183,67 @@ const Chat: React.FC = () => {
     setMessages([welcomeMessage]);
   }, [user]);
 
+  const openEmergencyModal = useCallback(() => {
+    setShowEmergencyModal(true);
+  }, []);
+
+  const closeEmergencyModal = useCallback(() => {
+    setShowEmergencyModal(false);
+    setEmergencyDetails('');
+  }, []);
+
+  const submitEmergency = useCallback(async () => {
+    if (!emergencyDetails.trim()) return;
+    
+    setLoading(true);
+    setShowEmergencyModal(false);
+    
+    try {
+      const response = await chatAPI.submitEmergency({
+        details: emergencyDetails
+      });
+      
+      const data = response.data;
+      
+      // Add messages to the chat
+      const userMessage: Message = {
+        type: 'user',
+        content: `🚨 EMERGENCY: ${emergencyDetails}`,
+        timestamp: new Date(),
+      };
+      
+      const systemMessage: Message = {
+        type: 'ai',
+        content: `⚠️ EMERGENCY SUBMITTED!\nYour emergency has been reported with reference ID: ${data.grievanceNumber}.\nAuthorities will be contacted immediately.`,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, userMessage, systemMessage]);
+      setEmergencyDetails('');
+      
+    } catch (error: any) {
+      console.error('Error submitting emergency:', error);
+      
+      let errorMsg = 'Failed to submit emergency. Please try again or call emergency services directly.';
+      
+      if (error.response?.status === 401) {
+        errorMsg = 'Your session has expired. Please refresh the page and log in again.';
+      }
+      
+      setError(errorMsg);
+      
+      const errorMessage: Message = {
+        type: 'ai',
+        content: errorMsg,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  }, [emergencyDetails]);
+
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -194,11 +251,20 @@ const Chat: React.FC = () => {
         <div className="chat-info">
           {sessionId && <span className="session-id">Session: {sessionId}</span>}
           {user && <span className="user-name">User: {user.username}</span>}
-          {formSubmitted && (
-            <button onClick={startNewChat} className="new-chat-button">
-              Start New Complaint
+          <div className="header-buttons">
+            {formSubmitted && (
+              <button onClick={startNewChat} className="new-chat-button">
+                Start New Complaint
+              </button>
+            )}
+            <button 
+              onClick={openEmergencyModal} 
+              className="emergency-button"
+              disabled={loading}
+            >
+              🚨 Emergency
             </button>
-          )}
+          </div>
         </div>
       </div>
       
@@ -247,6 +313,34 @@ const Chat: React.FC = () => {
           Send
         </button>
       </div>
+
+      {/* Emergency Modal */}
+      {showEmergencyModal && (
+        <div className="modal-overlay">
+          <div className="modal-content emergency-modal">
+            <h3>🚨 Submit Emergency Report</h3>
+            <p>Use this only for urgent situations requiring immediate attention.</p>
+            <textarea
+              value={emergencyDetails}
+              onChange={(e) => setEmergencyDetails(e.target.value)}
+              placeholder="Briefly describe the emergency situation..."
+              rows={4}
+            />
+            <div className="modal-buttons">
+              <button onClick={closeEmergencyModal} className="cancel-button">
+                Cancel
+              </button>
+              <button 
+                onClick={submitEmergency} 
+                className="submit-emergency-button"
+                disabled={!emergencyDetails.trim()}
+              >
+                Submit Emergency
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -74,6 +74,9 @@ export const chatAPI = {
   getSessions: () => api.get('/chat/sessions'),
   
   test: () => api.get('/chat/test'),
+  
+  submitEmergency: (data: { details: string }) =>
+    api.post('/chat/emergency', data),
 };
 
 export default api;

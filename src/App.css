@@ -576,3 +576,123 @@
 tr.form-submitted {
   background-color: #f0f7ff;
 }
+
+/* Emergency Button */
+.emergency-button {
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.2s;
+  font-weight: bold;
+}
+
+.emergency-button:hover:not(:disabled) {
+  background-color: #c9302c;
+}
+
+.emergency-button:disabled {
+  background-color: #f7a7a5;
+  cursor: not-allowed;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.emergency-modal h3 {
+  color: #d9534f;
+  margin-top: 0;
+}
+
+.emergency-modal textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 15px 0;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancel-button {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-emergency-button {
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-emergency-button:hover:not(:disabled) {
+  background-color: #c9302c;
+}
+
+.submit-emergency-button:disabled {
+  background-color: #f7a7a5;
+  cursor: not-allowed;
+}
+
+/* Add emergency highlight in complaints list */
+tr.emergency {
+  background-color: #ffebee !important;
+}
+
+tr.emergency:hover {
+  background-color: #ffcdd2 !important;
+}
+
+.emergency-badge {
+  background-color: #d9534f;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: inline-block;
+  margin-left: 5px;
+}
