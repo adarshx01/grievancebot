@@ -18,6 +18,7 @@ public class ComplaintFormData {
     private String summary;
     private boolean submitForm;
     private boolean mandatoryInfoQueried;
+    private boolean emergency = false; // Add emergency flag
     
     @Data
     @NoArgsConstructor

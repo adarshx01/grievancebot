@@ -2,6 +2,7 @@ package com.redressalbot.grievanceredressalbot.controller;
 
 import com.redressalbot.grievanceredressalbot.service.ChatService;
 import com.redressalbot.grievanceredressalbot.entity.User;
+import com.redressalbot.grievanceredressalbot.entity.Grievance; // Add this import
 import com.redressalbot.grievanceredressalbot.dto.ChatRequest;
 import com.redressalbot.grievanceredressalbot.dto.ChatResponse;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +11,8 @@ import org.springframework.security.core.Authentication;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -64,5 +67,26 @@ public class ChatController {
         }
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok("Chat sessions for user: " + user.getUsername());
+    }
+
+    @PostMapping("/emergency")
+    public ResponseEntity<ChatResponse> submitEmergency(@RequestBody Map<String, String> request,
+                                                       Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
+
+        User user = (User) authentication.getPrincipal();
+        String emergencyDetails = request.getOrDefault("details", "Emergency situation reported");
+
+        Grievance grievance = chatService.submitEmergencyGrievance(user, emergencyDetails);
+
+        ChatResponse response = new ChatResponse();
+        response.setAiResponse("Your emergency has been reported. Authorities will be contacted immediately.");
+        response.setGrievanceId(grievance.getId());
+        response.setGrievanceNumber(grievance.getGrievanceNumber());
+        response.setCategory("EMERGENCY");
+
+        return ResponseEntity.ok(response);
     }
 }

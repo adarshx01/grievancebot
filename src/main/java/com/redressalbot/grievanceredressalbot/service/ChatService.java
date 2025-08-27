@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.List; 
 
 @Service
 @RequiredArgsConstructor
@@ -124,8 +125,9 @@ public class ChatService {
         grievance.setAiResponse(aiResponse);
         grievance.setCategory(category);
         grievance.setGrievanceNumber("GRV-" + System.currentTimeMillis());
-        grievance.setPriority(determinePriority(formData));
+        grievance.setPriority(formData.isEmergency() ? "HIGH" : determinePriority(formData));
         grievance.setFormSubmitted(true);
+        grievance.setEmergency(formData.isEmergency()); // Set emergency flag
         
         try {
             // Store the complete form data as JSON
@@ -338,5 +340,86 @@ public class ChatService {
             return firstMessage.substring(0, 47) + "...";
         }
         return firstMessage;
+    }
+    
+    // Add new method to handle emergency submissions
+    public Grievance submitEmergencyGrievance(User user, String emergencyDetails) {
+        // Create chat session for this emergency
+        ChatSession session = new ChatSession();
+        session.setUser(user);
+        session.setSessionTitle("EMERGENCY: " + emergencyDetails.substring(0, Math.min(30, emergencyDetails.length())) + "...");
+        session.setCreatedAt(LocalDateTime.now());
+        session.setUpdatedAt(LocalDateTime.now());
+        session = chatSessionRepository.save(session);
+        
+        // Save message
+        ChatMessage message = new ChatMessage();
+        message.setChatSession(session);
+        message.setContent("EMERGENCY: " + emergencyDetails);
+        message.setMessageType(MessageType.USER);
+        message.setMessageOrder(1);
+        message.setCreatedAt(LocalDateTime.now());
+        chatMessageRepository.save(message);
+        
+        // Create emergency form data
+        ComplaintFormData formData = new ComplaintFormData();
+        formData.setEmergency(true);
+        formData.setSubmitForm(true);
+        formData.setMandatoryInfoQueried(true);
+        
+        // Set personal information
+        ComplaintFormData.PersonalInformation personalInfo = new ComplaintFormData.PersonalInformation();
+        ComplaintFormData.PersonalInformation.FullName fullName = new ComplaintFormData.PersonalInformation.FullName();
+        fullName.setFirstName(user.getFirstName());
+        fullName.setLastName(user.getLastName());
+        personalInfo.setFullName(fullName);
+        formData.setPersonalInformation(personalInfo);
+        
+        // Set contact details if available
+        ComplaintFormData.ContactDetails contactDetails = new ComplaintFormData.ContactDetails();
+        if (user.getPhoneNumber() != null) {
+            ComplaintFormData.ContactDetails.Phone phone = new ComplaintFormData.ContactDetails.Phone();
+            phone.setType("mobile");
+            phone.setNumber(user.getPhoneNumber());
+            contactDetails.setPhones(List.of(phone));
+        }
+        formData.setContactDetails(contactDetails);
+        
+        // Set incident information
+        ComplaintFormData.IncidentInformation incidentInfo = new ComplaintFormData.IncidentInformation();
+        incidentInfo.setIncidentDate(LocalDateTime.now().toString().substring(0, 10));
+        incidentInfo.setIncidentTime(LocalDateTime.now().toString().substring(11, 16));
+        incidentInfo.setIncidentType("EMERGENCY");
+        incidentInfo.setDetailedDescription(emergencyDetails);
+        formData.setIncidentInformation(incidentInfo);
+        
+        // Set summary
+        formData.setSummary("EMERGENCY REPORT: " + emergencyDetails);
+        
+        // Create grievance
+        Grievance grievance = new Grievance();
+        grievance.setUser(user);
+        grievance.setChatSession(session);
+        grievance.setUserMessage(emergencyDetails);
+        grievance.setAiResponse("Emergency submitted. Authorities will be contacted immediately.");
+        grievance.setCategory("EMERGENCY");
+        grievance.setGrievanceNumber("EMERG-" + System.currentTimeMillis());
+        grievance.setPriority("HIGH");
+        grievance.setFormSubmitted(true);
+        grievance.setEmergency(true);
+        
+        try {
+            // Store form data as JSON
+            grievance.setFormDataJson(objectMapper.writeValueAsString(formData));
+            grievance.setComplaintType("EMERGENCY");
+            grievance.setIncidentDate(LocalDateTime.now().toString().substring(0, 10));
+            grievance.setIncidentSummary("EMERGENCY: " + emergencyDetails);
+            grievance.setVictimName(user.getFirstName() + " " + user.getLastName());
+            grievance.setVictimContact(user.getPhoneNumber());
+        } catch (Exception e) {
+            log.error("Error creating emergency grievance", e);
+        }
+        
+        return grievanceRepository.save(grievance);
     }
 }

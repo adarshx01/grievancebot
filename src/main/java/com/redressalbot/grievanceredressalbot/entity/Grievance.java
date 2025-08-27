@@ -49,6 +49,8 @@ public class Grievance {
     
     private boolean formSubmitted = false;
     
+    private boolean emergency = false; // Add emergency flag
+    
     private String complaintType;
     private String victimName;
     private String victimContact;
