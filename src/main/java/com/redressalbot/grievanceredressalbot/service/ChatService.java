@@ -1,5 +1,6 @@
 package com.redressalbot.grievanceredressalbot.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redressalbot.grievanceredressalbot.dto.ChatRequest;
 import com.redressalbot.grievanceredressalbot.dto.ChatResponse;
@@ -18,6 +19,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.List; 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,124 +32,130 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final GrievanceRepository grievanceRepository;
     private final GeminiService geminiService;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     
     @Transactional
     public ChatResponse processChat(ChatRequest request, User user) {
-        // Get or create chat session
-        ChatSession session = getOrCreateSession(request.getSessionId(), user);
-        
-        // Save user message
-        ChatMessage userMessage = saveMessage(session, request.getMessage(), MessageType.USER);
-        
-        // Generate AI response with form gathering capabilities
-        String aiResponse = generateAIResponse(request.getMessage(), session);
-        
-        // Save AI response
-        ChatMessage assistantMessage = saveMessage(session, aiResponse, MessageType.ASSISTANT);
-        
-        // Check if it's a grievance and handle accordingly
-        ChatResponse response = new ChatResponse();
-        response.setSessionId(session.getId());
-        response.setUserMessage(request.getMessage());
-        response.setAiResponse(aiResponse);
-        
-        // Categorize and check if it's a grievance
-        String category = categorizeMessage(request.getMessage());
-        response.setCategory(category);
-        
-        // Check for form submission in AI response
-        processFormSubmissionData(aiResponse, response);
-        
-        // If form submission is ready, create or update a grievance
-        if (response.isSubmitForm() && response.isMandatoryInfoQueried() && response.getFormData() != null) {
-            try {
-                // Parse the form data
-                ComplaintFormData formData = objectMapper.readValue(response.getFormData(), ComplaintFormData.class);
-                
-                // Create or update grievance with form data
-                Grievance grievance = createGrievanceFromForm(user, session, request.getMessage(), aiResponse, category, formData);
-                
-                response.setGrievanceId(grievance.getId());
-                response.setGrievanceNumber(grievance.getGrievanceNumber());
-            } catch (Exception e) {
-                log.error("Error processing form submission", e);
+        try {
+            log.info("Processing chat for user: {}, sessionId: {}", user.getUsername(), request.getSessionId());
+            
+            // Get or create chat session
+            ChatSession session = getOrCreateSession(request.getSessionId(), user);
+            log.info("Using session: {}", session.getId());
+            
+            // Save user message
+            ChatMessage userMessage = saveMessage(session, request.getMessage(), MessageType.USER);
+            
+            // Generate AI response with form gathering capabilities
+            String aiResponse = generateAIResponse(request.getMessage(), session);
+            
+            // Save AI response
+            ChatMessage assistantMessage = saveMessage(session, aiResponse, MessageType.ASSISTANT);
+            
+            // Check if it's a grievance and handle accordingly
+            ChatResponse response = new ChatResponse();
+            response.setSessionId(session.getId());
+            response.setUserMessage(request.getMessage());
+            response.setAiResponse(aiResponse);
+            
+            // Categorize message
+            String category = categorizeMessage(request.getMessage());
+            response.setCategory(category);
+            
+            // Check for form submission in AI response
+            processFormSubmissionData(aiResponse, response);
+            
+            // ONLY create grievance when form is completely submitted
+            if (response.isSubmitForm() && response.isMandatoryInfoQueried() && response.getFormData() != null) {
+                try {
+                    ComplaintFormData formData = objectMapper.readValue(response.getFormData(), ComplaintFormData.class);
+                    String conversationContext = getAllChatMessages(session);
+                    Grievance grievance = createGrievanceFromForm(user, session, conversationContext, aiResponse, category, formData);
+                    response.setGrievanceId(grievance.getId());
+                    response.setGrievanceNumber(grievance.getGrievanceNumber());
+                    log.info("Created grievance: {}", grievance.getGrievanceNumber());
+                } catch (Exception e) {
+                    log.error("Error creating grievance from form data", e);
+                }
             }
-        } else if (isGrievance(request.getMessage(), category)) {
-            // Handle as regular grievance if no form data
-            Grievance grievance = createGrievance(user, session, request.getMessage(), aiResponse, category);
-            response.setGrievanceId(grievance.getId());
-            response.setGrievanceNumber(grievance.getGrievanceNumber());
+            
+            // Update session
+            session.setUpdatedAt(LocalDateTime.now());
+            if (session.getSessionTitle() == null) {
+                session.setSessionTitle(generateSessionTitle(request.getMessage()));
+            }
+            chatSessionRepository.save(session);
+            
+            return response;
+            
+        } catch (Exception e) {
+            log.error("Error processing chat", e);
+            throw new RuntimeException("Error processing chat: " + e.getMessage(), e);
+        }
+    }
+    
+    // Helper method to get all chat messages for context
+    private String getAllChatMessages(ChatSession session) {
+        List<ChatMessage> messages = chatMessageRepository.findByChatSessionOrderByMessageOrderAsc(session);
+        StringBuilder conversationContext = new StringBuilder();
+        
+        for (ChatMessage message : messages) {
+            conversationContext.append(message.getMessageType().name()).append(": ")
+                              .append(message.getContent()).append("\n");
         }
         
-        // Update session
-        session.setUpdatedAt(LocalDateTime.now());
-        if (session.getSessionTitle() == null) {
-            session.setSessionTitle(generateSessionTitle(request.getMessage()));
-        }
-        chatSessionRepository.save(session);
-        
-        return response;
+        return conversationContext.toString();
     }
     
     private void processFormSubmissionData(String aiResponse, ChatResponse response) {
-        // Check if the response contains form data in JSON format
         try {
-            // Look for JSON structure in the response
-            Pattern pattern = Pattern.compile("\\{[\\s\\S]*?\"submitForm\"\\s*:\\s*(true|false)[\\s\\S]*?\"mandatoryInfoQueried\"\\s*:\\s*(true|false)[\\s\\S]*?\\}");
-            Matcher matcher = pattern.matcher(aiResponse);
+            // Look for JSON structure in the AI response
+            Pattern jsonPattern = Pattern.compile("\\{[^{}]*\"submitForm\"[^{}]*\\}", Pattern.DOTALL);
+            Matcher matcher = jsonPattern.matcher(aiResponse);
             
             if (matcher.find()) {
-                String jsonStr = matcher.group(0);
-                log.info("Found form data JSON: {}", jsonStr);
+                String jsonStr = matcher.group();
+                Map<String, Object> jsonData = objectMapper.readValue(jsonStr, Map.class);
                 
-                // Parse the JSON to extract flags
-                ComplaintFormData formData = objectMapper.readValue(jsonStr, ComplaintFormData.class);
+                response.setSubmitForm(Boolean.TRUE.equals(jsonData.get("submitForm")));
+                response.setMandatoryInfoQueried(Boolean.TRUE.equals(jsonData.get("mandatoryInfoQueried")));
                 
-                // Set form submission flags
-                response.setSubmitForm(formData.isSubmitForm());
-                response.setMandatoryInfoQueried(formData.isMandatoryInfoQueried());
-                response.setFormData(jsonStr);
-                
-                // Clean the AI response to remove the JSON if needed
-                String cleanedResponse = aiResponse.replace(jsonStr, "");
-                response.setAiResponse(cleanedResponse);
+                if (response.isSubmitForm() && response.isMandatoryInfoQueried()) {
+                    response.setFormData(jsonStr);
+                }
             }
         } catch (Exception e) {
-            log.error("Error parsing form data from AI response", e);
+            log.error("Error parsing form submission data", e);
         }
     }
     
-    private Grievance createGrievanceFromForm(User user, ChatSession session, String userMessage, 
+    private Grievance createGrievanceFromForm(User user, ChatSession session, String conversationContext, 
                                              String aiResponse, String category, ComplaintFormData formData) {
         Grievance grievance = new Grievance();
         grievance.setUser(user);
         grievance.setChatSession(session);
-        grievance.setUserMessage(userMessage);
+        grievance.setUserMessage(conversationContext);
         grievance.setAiResponse(aiResponse);
         grievance.setCategory(category);
         grievance.setGrievanceNumber("GRV-" + System.currentTimeMillis());
         grievance.setPriority(formData.isEmergency() ? "HIGH" : determinePriority(formData));
         grievance.setFormSubmitted(true);
-        grievance.setEmergency(formData.isEmergency()); // Set emergency flag
+        grievance.setEmergency(formData.isEmergency());
         
         try {
-            // Store the complete form data as JSON
             grievance.setFormDataJson(objectMapper.writeValueAsString(formData));
             
-            // Extract key information for quick access
+            // Extract key information
             if (formData.getIncidentInformation() != null) {
                 grievance.setComplaintType(formData.getIncidentInformation().getIncidentType());
                 grievance.setIncidentDate(formData.getIncidentInformation().getIncidentDate());
-                grievance.setIncidentSummary(formData.getSummary());
-                
                 if (formData.getIncidentInformation().getIncidentLocation() != null) {
-                    grievance.setIncidentLocation(formData.getIncidentInformation().getIncidentLocation().getAddress());
+                    grievance.setIncidentLocation(formData.getIncidentInformation().getIncidentLocation().getPlaceName());
                 }
             }
             
             if (formData.getPersonalInformation() != null && formData.getPersonalInformation().getFullName() != null) {
-                ComplaintFormData.PersonalInformation.FullName fullName = formData.getPersonalInformation().getFullName();
+                var fullName = formData.getPersonalInformation().getFullName();
                 String name = String.format("%s %s %s", 
                     fullName.getFirstName() != null ? fullName.getFirstName() : "",
                     fullName.getMiddleName() != null ? fullName.getMiddleName() : "",
@@ -159,15 +169,16 @@ public class ChatService {
                 grievance.setVictimContact(formData.getContactDetails().getPhones().get(0).getNumber());
             }
             
+            grievance.setIncidentSummary(formData.getSummary());
+            
         } catch (Exception e) {
-            log.error("Error storing form data", e);
+            log.error("Error processing form data", e);
         }
         
         return grievanceRepository.save(grievance);
     }
     
     private String determinePriority(ComplaintFormData formData) {
-        // Implement logic to determine priority based on incident type
         if (formData.getIncidentInformation() == null || formData.getIncidentInformation().getIncidentType() == null) {
             return "MEDIUM";
         }
@@ -177,20 +188,17 @@ public class ChatService {
         if (incidentType.contains("FRAUD") || incidentType.contains("THEFT") || 
             incidentType.contains("ASSAULT") || incidentType.contains("ATTACK")) {
             return "HIGH";
-        } else if (incidentType.contains("HARASSMENT") || incidentType.contains("THREAT")) {
+        } else if (incidentType.contains("HARASSMENT") || incidentType.contains("STALKING")) {
             return "HIGH";
-        } else if (incidentType.contains("LOST") || incidentType.contains("MISSING")) {
-            return "MEDIUM";
         } else {
             return "MEDIUM";
         }
     }
     
-    // Keep your existing methods
-    private ChatSession getOrCreateSession(Long sessionId, User user) {
+    // Fix the getOrCreateSession method to handle UUID properly
+    private ChatSession getOrCreateSession(UUID sessionId, User user) {
         if (sessionId != null) {
             return chatSessionRepository.findById(sessionId)
-                    .filter(session -> session.getUser().getId().equals(user.getId()))
                     .orElse(createNewSession(user));
         }
         return createNewSession(user);
@@ -204,7 +212,8 @@ public class ChatService {
     }
     
     private ChatMessage saveMessage(ChatSession session, String content, MessageType type) {
-        int messageOrder = chatMessageRepository.findByChatSessionOrderByMessageOrderAsc(session).size() + 1;
+        List<ChatMessage> existingMessages = chatMessageRepository.findByChatSessionOrderByMessageOrderAsc(session);
+        int messageOrder = existingMessages.size() + 1;
         
         ChatMessage message = new ChatMessage();
         message.setChatSession(session);
@@ -221,20 +230,16 @@ public class ChatService {
         
         StringBuilder conversationHistory = new StringBuilder();
         for (ChatMessage msg : messages) {
-            conversationHistory.append(msg.getMessageType().name()).append(": ").append(msg.getContent()).append("\n");
+            conversationHistory.append(msg.getMessageType().name())
+                              .append(": ")
+                              .append(msg.getContent())
+                              .append("\n");
         }
         
         String prompt = """
-            [STRICTLY DO NOT ANSWER IRRELEVANT TOPICS/Questions OTHER THAN COMPLAINTS, PROBLEMS ,etc, and YOU WILL BE ASKING MAXIMUM OF 2-3 QUESTION AT A TIME TILL THE END OF THE CONVERSATION]
+            You are a cyber crime complaint registration assistant. Help users file cyber crime complaints by collecting all necessary information in a structured format.
             
-            Role: You are an immediate, quick Cyber crime complaint registerer asking very specific questions (not all questions at once) deeply related to the topic/problem. Ask short and relevant questions, with step-by-step follow-up questions from the person.
-            
-            Example: What has happened to them? What troubles are they facing?
-            
-            Based on the situation, act as an Instant police complaint registerer. Ask specific and concise questions to understand the full issue and problem. Then at the end, ask the user whether to create a Case complaint. If yes, collect their name, address, phone number. [STRICTLY ask questions until you have all information]
-            
-            If the user agrees to submit a complaint, create a full summary of the report with all details the victim/user has provided, structured in this exact JSON format:
-            
+            When ALL required information is collected, respond with a JSON object in this exact format:
             {
               "personal_information": {
                 "full_name": {
@@ -244,7 +249,7 @@ public class ChatService {
                 },
                 "date_of_birth": "YYYY-MM-DD",
                 "gender": "string",
-                "adhaar number": "string",
+                "adhaar_number": "string",
                 "marital_status": "string"
               },
               "contact_details": {
@@ -282,44 +287,40 @@ public class ChatService {
               "mandatoryInfoQueried": true
             }
             
-            Set submitForm and mandatoryInfoQueried to true ONLY when you have collected ALL necessary information.
+            IMPORTANT: Set submitForm and mandatoryInfoQueried to true ONLY when ALL required information (personal, contact, incident) is collected and the user confirms submission. Do not set them prematurely.
             
             Conversation history:
             %s
             
             Current user message: %s
             """.formatted(conversationHistory.toString(), userMessage);
-            
+    
         return geminiService.generateResponse(prompt);
     }
     
     private String categorizeMessage(String message) {
         String prompt = """
-            Categorize this message into one of these categories:
-            - GENERAL_INQUIRY
-            - BILLING_ISSUE
-            - SERVICE_COMPLAINT
-            - TECHNICAL_SUPPORT
-            - PRODUCT_COMPLAINT
-            - STAFF_COMPLAINT
+            Categorize this cyber crime complaint into one of these categories:
+            - FINANCIAL_FRAUD
+            - IDENTITY_THEFT
+            - ONLINE_HARASSMENT
+            - PHISHING
+            - MALWARE
+            - DATA_BREACH
+            - SOCIAL_MEDIA_ABUSE
             - OTHER
             
             Message: %s
             
-            Return only the category name.
+            Return only the category name, nothing else.
             """.formatted(message);
-            
-        return geminiService.generateResponse(prompt).trim().toUpperCase();
+        
+        String response = geminiService.generateResponse(prompt);
+        return response.trim().toUpperCase();
     }
     
     private boolean isGrievance(String message, String category) {
-        // Consider it a grievance if it's a complaint or contains complaint indicators
-        return category.contains("COMPLAINT") || category.contains("ISSUE") ||
-               message.toLowerCase().contains("complaint") ||
-               message.toLowerCase().contains("problem") ||
-               message.toLowerCase().contains("issue") ||
-               message.toLowerCase().contains("wrong") ||
-               message.toLowerCase().contains("error");
+        return !category.equals("OTHER") && message.toLowerCase().contains("complaint");
     }
     
     private Grievance createGrievance(User user, ChatSession session, String userMessage, String aiResponse, String category) {
@@ -330,96 +331,58 @@ public class ChatService {
         grievance.setAiResponse(aiResponse);
         grievance.setCategory(category);
         grievance.setGrievanceNumber("GRV-" + System.currentTimeMillis());
-        grievance.setPriority("MEDIUM"); // Default priority
+        grievance.setPriority("MEDIUM");
         
         return grievanceRepository.save(grievance);
     }
     
     private String generateSessionTitle(String firstMessage) {
-        if (firstMessage.length() > 50) {
-            return firstMessage.substring(0, 47) + "...";
-        }
-        return firstMessage;
+        return firstMessage.length() > 50 ? 
+               firstMessage.substring(0, 47) + "..." : 
+               firstMessage;
     }
     
     // Add new method to handle emergency submissions
     public Grievance submitEmergencyGrievance(User user, String emergencyDetails) {
-        // Create chat session for this emergency
-        ChatSession session = new ChatSession();
-        session.setUser(user);
-        session.setSessionTitle("EMERGENCY: " + emergencyDetails.substring(0, Math.min(30, emergencyDetails.length())) + "...");
-        session.setCreatedAt(LocalDateTime.now());
-        session.setUpdatedAt(LocalDateTime.now());
-        session = chatSessionRepository.save(session);
-        
-        // Save message
-        ChatMessage message = new ChatMessage();
-        message.setChatSession(session);
-        message.setContent("EMERGENCY: " + emergencyDetails);
-        message.setMessageType(MessageType.USER);
-        message.setMessageOrder(1);
-        message.setCreatedAt(LocalDateTime.now());
-        chatMessageRepository.save(message);
-        
-        // Create emergency form data
-        ComplaintFormData formData = new ComplaintFormData();
-        formData.setEmergency(true);
-        formData.setSubmitForm(true);
-        formData.setMandatoryInfoQueried(true);
-        
-        // Set personal information
-        ComplaintFormData.PersonalInformation personalInfo = new ComplaintFormData.PersonalInformation();
-        ComplaintFormData.PersonalInformation.FullName fullName = new ComplaintFormData.PersonalInformation.FullName();
-        fullName.setFirstName(user.getFirstName());
-        fullName.setLastName(user.getLastName());
-        personalInfo.setFullName(fullName);
-        formData.setPersonalInformation(personalInfo);
-        
-        // Set contact details if available
-        ComplaintFormData.ContactDetails contactDetails = new ComplaintFormData.ContactDetails();
-        if (user.getPhoneNumber() != null) {
-            ComplaintFormData.ContactDetails.Phone phone = new ComplaintFormData.ContactDetails.Phone();
-            phone.setType("mobile");
-            phone.setNumber(user.getPhoneNumber());
-            contactDetails.setPhones(List.of(phone));
-        }
-        formData.setContactDetails(contactDetails);
-        
-        // Set incident information
-        ComplaintFormData.IncidentInformation incidentInfo = new ComplaintFormData.IncidentInformation();
-        incidentInfo.setIncidentDate(LocalDateTime.now().toString().substring(0, 10));
-        incidentInfo.setIncidentTime(LocalDateTime.now().toString().substring(11, 16));
-        incidentInfo.setIncidentType("EMERGENCY");
-        incidentInfo.setDetailedDescription(emergencyDetails);
-        formData.setIncidentInformation(incidentInfo);
-        
-        // Set summary
-        formData.setSummary("EMERGENCY REPORT: " + emergencyDetails);
-        
-        // Create grievance
-        Grievance grievance = new Grievance();
-        grievance.setUser(user);
-        grievance.setChatSession(session);
-        grievance.setUserMessage(emergencyDetails);
-        grievance.setAiResponse("Emergency submitted. Authorities will be contacted immediately.");
-        grievance.setCategory("EMERGENCY");
-        grievance.setGrievanceNumber("EMERG-" + System.currentTimeMillis());
-        grievance.setPriority("HIGH");
-        grievance.setFormSubmitted(true);
-        grievance.setEmergency(true);
-        
         try {
-            // Store form data as JSON
-            grievance.setFormDataJson(objectMapper.writeValueAsString(formData));
-            grievance.setComplaintType("EMERGENCY");
-            grievance.setIncidentDate(LocalDateTime.now().toString().substring(0, 10));
-            grievance.setIncidentSummary("EMERGENCY: " + emergencyDetails);
-            grievance.setVictimName(user.getFirstName() + " " + user.getLastName());
-            grievance.setVictimContact(user.getPhoneNumber());
+            log.info("Creating emergency grievance for user: {}", user.getUsername());
+            
+            Grievance grievance = new Grievance();
+            grievance.setUser(user);
+            grievance.setUserMessage("EMERGENCY: " + emergencyDetails);
+            grievance.setAiResponse("Emergency grievance automatically created and escalated to authorities.");
+            grievance.setCategory("EMERGENCY");
+            grievance.setGrievanceNumber("EMG-" + System.currentTimeMillis());
+            grievance.setPriority("CRITICAL");
+            grievance.setEmergency(true);
+            grievance.setStatus(GrievanceStatus.IN_PROGRESS); // Immediately escalate
+            
+            return grievanceRepository.save(grievance);
+            
         } catch (Exception e) {
             log.error("Error creating emergency grievance", e);
+            throw new RuntimeException("Failed to submit emergency: " + e.getMessage());
         }
-        
-        return grievanceRepository.save(grievance);
+    }
+    
+    private void appendToChatHistory(ChatSession session, String content, MessageType type) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            List<Map<String, Object>> chatHistory;
+            if (session.getChatHistoryJson() != null) {
+                chatHistory = mapper.readValue(session.getChatHistoryJson(), new TypeReference<>() {});
+            } else {
+                chatHistory = new ArrayList<>();
+            }
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", type.name());
+            message.put("content", content);
+            message.put("timestamp", LocalDateTime.now().toString());
+            chatHistory.add(message);
+            session.setChatHistoryJson(mapper.writeValueAsString(chatHistory));
+            chatSessionRepository.save(session);
+        } catch (Exception e) {
+            log.error("Failed to update chat history JSON", e);
+        }
     }
 }

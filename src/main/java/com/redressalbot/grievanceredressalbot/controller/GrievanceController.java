@@ -1,5 +1,6 @@
 package com.redressalbot.grievanceredressalbot.controller;
 
+import com.redressalbot.grievanceredressalbot.dto.ComplaintFormData;  // Added import for ComplaintFormData
 import com.redressalbot.grievanceredressalbot.entity.Grievance;
 import com.redressalbot.grievanceredressalbot.entity.User;
 import com.redressalbot.grievanceredressalbot.service.GrievanceService;
@@ -7,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;  // Added import for AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/grievance")
@@ -32,7 +35,7 @@ public class GrievanceController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Grievance> getGrievanceDetails(
-            @PathVariable Long id, Authentication authentication) {
+            @PathVariable UUID id, Authentication authentication) {  // Change from Long to UUID
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build();
         }
@@ -56,5 +59,21 @@ public class GrievanceController {
 
         List<Grievance> grievances = grievanceService.getAllGrievances();
         return ResponseEntity.ok(grievances);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerGrievance(@RequestBody ComplaintFormData formData, @AuthenticationPrincipal User user) {
+        try {
+            // Validate user and form data
+            if (user == null) {
+                return ResponseEntity.status(401).body("User not authenticated");
+            }
+            // Process registration (e.g., save to database)
+            grievanceService.register(formData, user);
+            return ResponseEntity.ok("Grievance registered successfully");
+        } catch (Exception e) {
+            // Log error for debugging
+            return ResponseEntity.status(500).body("Registration failed: " + e.getMessage());
+        }
     }
 }

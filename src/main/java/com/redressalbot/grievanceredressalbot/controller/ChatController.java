@@ -1,16 +1,16 @@
 package com.redressalbot.grievanceredressalbot.controller;
 
-import com.redressalbot.grievanceredressalbot.service.ChatService;
-import com.redressalbot.grievanceredressalbot.entity.User;
-import com.redressalbot.grievanceredressalbot.entity.Grievance; // Add this import
 import com.redressalbot.grievanceredressalbot.dto.ChatRequest;
 import com.redressalbot.grievanceredressalbot.dto.ChatResponse;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import jakarta.servlet.http.HttpServletRequest;
+import com.redressalbot.grievanceredressalbot.entity.User;
+import com.redressalbot.grievanceredressalbot.entity.Grievance;
+import com.redressalbot.grievanceredressalbot.service.ChatService;
+import com.redressalbot.grievanceredressalbot.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -21,72 +21,86 @@ import java.util.Map;
 public class ChatController {
 
     private final ChatService chatService;
+    private final UserService userService;
 
     @PostMapping("/message")
     public ResponseEntity<ChatResponse> sendMessage(
             @RequestBody ChatRequest request,
-            Authentication authentication,
-            HttpServletRequest httpRequest) {
+            Authentication authentication) {
         try {
-            // Log session info for debugging
-            log.info("Session ID: {}", httpRequest.getSession().getId());
-            log.info("Authentication: {}", authentication != null ? authentication.getName() : "null");
-
             if (authentication == null || !authentication.isAuthenticated()) {
-                log.warn("Unauthenticated request to chat endpoint");
+                log.error("Authentication failed for chat message");
                 return ResponseEntity.status(401).build();
             }
 
-            User user = (User) authentication.getPrincipal();
-            log.info("Processing chat message for user: {} (ID: {})", user.getUsername(), user.getId());
-            log.info("Message: {}, SessionId: {}", request.getMessage(), request.getSessionId());
+            String username = authentication.getName();
+            User user = userService.loadUserByUsername(username);
 
             ChatResponse response = chatService.processChat(request, user);
-            log.info("Chat response generated successfully. SessionId: {}", response.getSessionId());
-
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             log.error("Error processing chat message", e);
             return ResponseEntity.status(500).build();
         }
     }
 
+    @PostMapping("/emergency")
+    public ResponseEntity<Map<String, Object>> submitEmergency(
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                log.error("Authentication failed for emergency submission");
+                return ResponseEntity.status(401).build();
+            }
+
+            String username = authentication.getName();
+            User user = userService.loadUserByUsername(username);
+
+            String emergencyDetails = request.get("details");
+            if (emergencyDetails == null || emergencyDetails.trim().isEmpty()) {
+                log.error("Emergency details are required");
+                return ResponseEntity.badRequest().build();
+            }
+
+            log.info("Processing emergency submission for user: {}", username);
+            Grievance grievance = chatService.submitEmergencyGrievance(user, emergencyDetails);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Emergency submitted successfully",
+                    "grievanceId", grievance.getId(),
+                    "grievanceNumber", grievance.getGrievanceNumber()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error submitting emergency", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "Failed to submit emergency: " + e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/test")
-    public ResponseEntity<String> test(Authentication authentication, HttpServletRequest request) {
-        String sessionId = request.getSession().getId();
-        String username = authentication != null ? authentication.getName() : "Anonymous";
-        String message = String.format("Chat API is working! Session: %s, User: %s", sessionId, username);
-        log.info("Test endpoint called: {}", message);
-        return ResponseEntity.ok(message);
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("Chat controller is working");
     }
 
     @GetMapping("/sessions")
-    public ResponseEntity<String> getUserSessions(Authentication authentication) {
-        if (authentication == null) {
-            return ResponseEntity.status(401).body("Not authenticated");
+    public ResponseEntity<String> getSessions(Authentication authentication) {
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).build();
+            }
+
+            // Implementation for getting chat sessions
+            return ResponseEntity.ok("Sessions endpoint - implementation needed");
+
+        } catch (Exception e) {
+            log.error("Error getting chat sessions", e);
+            return ResponseEntity.status(500).build();
         }
-        User user = (User) authentication.getPrincipal();
-        return ResponseEntity.ok("Chat sessions for user: " + user.getUsername());
-    }
-
-    @PostMapping("/emergency")
-    public ResponseEntity<ChatResponse> submitEmergency(@RequestBody Map<String, String> request,
-                                                       Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build();
-        }
-
-        User user = (User) authentication.getPrincipal();
-        String emergencyDetails = request.getOrDefault("details", "Emergency situation reported");
-
-        Grievance grievance = chatService.submitEmergencyGrievance(user, emergencyDetails);
-
-        ChatResponse response = new ChatResponse();
-        response.setAiResponse("Your emergency has been reported. Authorities will be contacted immediately.");
-        response.setGrievanceId(grievance.getId());
-        response.setGrievanceNumber(grievance.getGrievanceNumber());
-        response.setCategory("EMERGENCY");
-
-        return ResponseEntity.ok(response);
     }
 }

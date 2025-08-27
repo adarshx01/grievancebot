@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -21,6 +22,10 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    // GUID field for PostgreSQL
+    @Column(name = "guid", nullable = false, unique = true)
+    private String guid;
     
     @Column(unique = true, nullable = false)
     private String username;
@@ -44,7 +49,7 @@ public class User implements UserDetails {
     private Role role = Role.USER;
     
     @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
     
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
@@ -88,5 +93,16 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return enabled;
+    }
+    
+    // Ensure guid is set before persisting
+    @PrePersist
+    protected void onCreate() {
+        if (guid == null) {
+            guid = UUID.randomUUID().toString();
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

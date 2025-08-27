@@ -8,5 +8,8 @@ import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
+    List<ChatMessage> findByChatSessionOrderByCreatedAtAsc(ChatSession chatSession);
+    
+    // Add this method for ordered retrieval
     List<ChatMessage> findByChatSessionOrderByMessageOrderAsc(ChatSession chatSession);
 }

@@ -7,9 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> {
+public interface ChatSessionRepository extends JpaRepository<ChatSession, UUID> {
     List<ChatSession> findByUserOrderByUpdatedAtDesc(User user);
     List<ChatSession> findByUserAndStatusOrderByUpdatedAtDesc(User user, SessionStatus status);
     Optional<ChatSession> findByUserAndStatus(User user, SessionStatus status);

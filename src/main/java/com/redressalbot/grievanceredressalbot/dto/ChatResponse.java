@@ -1,22 +1,17 @@
 package com.redressalbot.grievanceredressalbot.dto;
 
 import lombok.Data;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import java.util.UUID;  // Add this import
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class ChatResponse {
-    private Long sessionId;
+    private UUID sessionId;  // Change from Long to UUID
     private String userMessage;
     private String aiResponse;
     private String category;
-    private Long grievanceId;
+    private boolean submitForm;
+    private boolean mandatoryInfoQueried;
+    private String formData;
+    private UUID grievanceId;  // Change from Long to UUID if Grievance also uses UUID
     private String grievanceNumber;
-    
-    // Form submission flags
-    private boolean submitForm = false;
-    private boolean mandatoryInfoQueried = false;
-    private String formData; // JSON string containing the structured form data
 }
