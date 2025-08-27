@@ -81,53 +81,63 @@ const ComplaintsList: React.FC = () => {
   }
 
   return (
-    <div className="complaints-container">
-      <h2>Submitted Complaints</h2>
+    <div className="complaints-list-container">
+      <h2>My Complaints</h2>
       
       {selectedComplaint ? (
         <div className="complaint-details">
-          <button onClick={closeDetails} className="back-button">← Back to list</button>
-          <h3>
-            Complaint #{selectedComplaint.grievanceNumber}
-            {selectedComplaint.emergency && (
-              <span className="emergency-badge">EMERGENCY</span>
-            )}
-          </h3>
+          <button onClick={closeDetails} className="back-button">← Back to List</button>
+          <h3>Complaint Details</h3>
+          <div className="detail-section">
+            <h4>Grievance Number</h4>
+            <div className="detail-text">{selectedComplaint.grievanceNumber}</div>
+          </div>
           
           <div className="detail-section">
-            <h4>Basic Information</h4>
-            <div className="detail-row">
-              <div className="detail-label">Victim Name:</div>
-              <div className="detail-value">{selectedComplaint.victimName || 'Not provided'}</div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Contact:</div>
-              <div className="detail-value">{selectedComplaint.victimContact || 'Not provided'}</div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Complaint Type:</div>
-              <div className="detail-value">
-                {selectedComplaint.complaintType}
-                {selectedComplaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
-              </div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Incident Date:</div>
-              <div className="detail-value">{selectedComplaint.incidentDate || 'Not specified'}</div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Location:</div>
-              <div className="detail-value">{selectedComplaint.incidentLocation || 'Not specified'}</div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Status:</div>
-              <div className="detail-value status">{selectedComplaint.status}</div>
-            </div>
-            <div className="detail-row">
-              <div className="detail-label">Submitted:</div>
-              <div className="detail-value">{formatDate(selectedComplaint.createdAt)}</div>
+            <h4>Status</h4>
+            <div className={`detail-text status ${selectedComplaint.status.toLowerCase()}`}>
+              {selectedComplaint.status}
+              {selectedComplaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
             </div>
           </div>
+          
+          <div className="detail-section">
+            <h4>Category</h4>
+            <div className="detail-text">{selectedComplaint.category}</div>
+          </div>
+          
+          <div className="detail-section">
+            <h4>Priority</h4>
+            <div className="detail-text">{selectedComplaint.priority}</div>
+          </div>
+          
+          {selectedComplaint.victimName && (
+            <div className="detail-section">
+              <h4>Victim Name</h4>
+              <div className="detail-text">{selectedComplaint.victimName}</div>
+            </div>
+          )}
+          
+          {selectedComplaint.victimContact && (
+            <div className="detail-section">
+              <h4>Contact</h4>
+              <div className="detail-text">{selectedComplaint.victimContact}</div>
+            </div>
+          )}
+          
+          {selectedComplaint.incidentDate && (
+            <div className="detail-section">
+              <h4>Incident Date</h4>
+              <div className="detail-text">{selectedComplaint.incidentDate}</div>
+            </div>
+          )}
+          
+          {selectedComplaint.incidentLocation && (
+            <div className="detail-section">
+              <h4>Incident Location</h4>
+              <div className="detail-text">{selectedComplaint.incidentLocation}</div>
+            </div>
+          )}
           
           {selectedComplaint.incidentSummary && (
             <div className="detail-section">
@@ -144,6 +154,13 @@ const ComplaintsList: React.FC = () => {
               </div>
             </div>
           )}
+          
+          <div className="detail-section">
+            <h4>Conversation History</h4>
+            <div className="detail-text conversation-history">
+              <pre>{selectedComplaint.userMessage}</pre>
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -154,11 +171,12 @@ const ComplaintsList: React.FC = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Name</th>
+                    <th>Grievance Number</th>
+                    <th>Victim Name</th>
                     <th>Type</th>
                     <th>Date</th>
                     <th>Status</th>
+                    <th>Form Submitted</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -167,18 +185,25 @@ const ComplaintsList: React.FC = () => {
                     <tr 
                       key={complaint.id} 
                       className={`
-                        ${complaint.formSubmitted ? 'form-submitted' : ''}
+                        ${complaint.formSubmitted ? 'form-submitted' : 'form-pending'}
                         ${complaint.emergency ? 'emergency' : ''}
                       `}
                     >
                       <td>{complaint.grievanceNumber}</td>
                       <td>{complaint.victimName || 'Unknown'}</td>
                       <td>
-                        {complaint.complaintType || complaint.status}
+                        {complaint.complaintType || complaint.category}
                         {complaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
                       </td>
                       <td>{formatDate(complaint.createdAt)}</td>
                       <td className={`status ${complaint.status.toLowerCase()}`}>{complaint.status}</td>
+                      <td>
+                        {complaint.formSubmitted ? (
+                          <span className="form-status submitted">✅ Complete</span>
+                        ) : (
+                          <span className="form-status pending">⏳ In Progress</span>
+                        )}
+                      </td>
                       <td>
                         <button 
                           onClick={() => viewComplaintDetails(complaint.id)}

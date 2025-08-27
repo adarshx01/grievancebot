@@ -68,15 +68,52 @@ export const authAPI = {
 
 // Chat API
 export const chatAPI = {
-  sendMessage: (message: { message: string; sessionId?: number }) =>
+  sendMessage: (message: { message: string; sessionId?: string }) => // Change to string
     api.post('/chat/message', message),
   
   getSessions: () => api.get('/chat/sessions'),
   
   test: () => api.get('/chat/test'),
   
-  submitEmergency: (data: { details: string }) =>
-    api.post('/chat/emergency', data),
+  submitEmergency: (data: { details: string }) => {
+    console.log('🚨 Submitting emergency with data:', data);
+    return api.post('/chat/emergency', data);
+  },
+};
+
+// Complaints API functions
+export const fetchComplaints = async (): Promise<any[]> => {
+  try {
+    console.log('🔄 Fetching complaints...');
+    const response = await api.get('/grievance/list');
+    console.log('✅ Complaints fetched successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error fetching complaints:', error);
+    
+    if (error.response?.status === 401) {
+      console.error('Authentication failed - redirecting to login');
+      throw new Error('Authentication failed. Please login again.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Access denied.');
+    } else if (error.response?.status === 500) {
+      throw new Error('Server error. Please try again later.');
+    }
+    
+    throw new Error(error.response?.data?.message || 'Failed to fetch complaints');
+  }
+};
+
+export const getComplaintDetails = async (id: number): Promise<any> => {
+  try {
+    console.log(`🔄 Fetching complaint details for ID: ${id}`);
+    const response = await api.get(`/grievance/${id}`);
+    console.log('✅ Complaint details fetched successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error fetching complaint details:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch complaint details');
+  }
 };
 
 export default api;

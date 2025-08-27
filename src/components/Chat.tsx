@@ -10,11 +10,11 @@ interface Message {
 }
 
 interface ChatResponse {
-  sessionId: number;
+  sessionId: string; // Change from number to string for UUID
   userMessage: string;
   aiResponse: string;
   category: string;
-  grievanceId?: number;
+  grievanceId?: string; // Change from number to string for UUID
   grievanceNumber?: string;
   submitForm?: boolean;
   mandatoryInfoQueried?: boolean;
@@ -25,12 +25,13 @@ const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<number | undefined>();
+  const [sessionId, setSessionId] = useState<string | undefined>(); // Change to string
   const [error, setError] = useState<string>('');
   const [welcomeMessageAdded, setWelcomeMessageAdded] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencyDetails, setEmergencyDetails] = useState('');
+  const [emergencySubmitting, setEmergencySubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user } = useAuth();
 
@@ -243,6 +244,52 @@ const Chat: React.FC = () => {
       setLoading(false);
     }
   }, [emergencyDetails]);
+
+  const handleEmergencySubmit = async () => {
+    if (!emergencyDetails.trim()) return;
+    
+    try {
+      setEmergencySubmitting(true);
+      console.log('🚨 Submitting emergency:', emergencyDetails);
+      
+      const response = await chatAPI.submitEmergency({ details: emergencyDetails });
+      console.log('✅ Emergency submitted successfully:', response.data);
+      
+      if (response.data.success) {
+        // Add confirmation message to chat
+        const confirmationMessage: Message = {
+          content: `🚨 EMERGENCY SUBMITTED SUCCESSFULLY\n\nGrievance Number: ${response.data.grievanceNumber}\nGrievance ID: ${response.data.grievanceId}\n\nYour emergency has been recorded and authorities will be contacted immediately. Please keep this reference number for future communication.`,
+          isUser: false,
+          timestamp: new Date(),
+          isEmergency: true
+        };
+        
+        setMessages(prev => [...prev, confirmationMessage]);
+        setEmergencyDetails('');
+        setShowEmergencyModal(false);
+        
+        // Show success alert
+        alert(`Emergency submitted successfully!\nGrievance Number: ${response.data.grievanceNumber}`);
+      } else {
+        throw new Error(response.data.message || 'Emergency submission failed');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error submitting emergency:', error);
+      
+      let errorMessage = 'Failed to submit emergency. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      alert(`Emergency submission failed: ${errorMessage}`);
+    } finally {
+      setEmergencySubmitting(false);
+    }
+  };
 
   return (
     <div className="chat-container">

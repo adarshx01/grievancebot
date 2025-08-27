@@ -561,11 +561,11 @@
 }
 
 .detail-json {
+  max-height: 400px;
+  overflow-y: auto;
   background-color: #f8f9fa;
   padding: 10px;
   border-radius: 4px;
-  overflow: auto;
-  max-height: 400px;
 }
 
 .detail-json pre {
@@ -695,4 +695,37 @@ tr.emergency:hover {
   font-weight: bold;
   display: inline-block;
   margin-left: 5px;
+}
+
+.form-submitted {
+  background-color: #e8f5e8;
+}
+
+.form-pending {
+  background-color: #fff3cd;
+}
+
+.emergency {
+  background-color: #f8d7da !important;
+  border-left: 4px solid #dc3545;
+}
+
+.form-status.submitted {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.form-status.pending {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.conversation-history {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap;
 }
