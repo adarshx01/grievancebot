@@ -20,12 +20,8 @@ import java.util.UUID;
 public class User implements UserDetails {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    // GUID field for PostgreSQL
-    @Column(name = "guid", nullable = false, unique = true)
-    private String guid;
+    @GeneratedValue(strategy = GenerationType.UUID)  // Change to UUID
+    private UUID id;
     
     @Column(unique = true, nullable = false)
     private String username;
@@ -95,12 +91,8 @@ public class User implements UserDetails {
         return enabled;
     }
     
-    // Ensure guid is set before persisting
     @PrePersist
     protected void onCreate() {
-        if (guid == null) {
-            guid = UUID.randomUUID().toString();
-        }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
