@@ -59,17 +59,20 @@ const AppContent: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading">
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
       <div className="auth-container">
-        <ConnectionStatus />
         {showRegister ? (
-          <div>
+          <div className="register-container">
             <Register />
-            <p>
+            <p style={{ textAlign: 'center', marginTop: '1rem' }}>
               Already have an account?{' '}
               <button 
                 className="link-button"
@@ -80,9 +83,9 @@ const AppContent: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div>
+          <div className="login-container">
             <Login />
-            <p>
+            <p style={{ textAlign: 'center', marginTop: '1rem' }}>
               Don't have an account?{' '}
               <button 
                 className="link-button"
@@ -108,8 +111,6 @@ const AppContent: React.FC = () => {
           </button>
         </div>
       </header>
-      
-      <ConnectionStatus />
       
       <div className="app-tabs">
         <button 

@@ -1,68 +1,100 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color-scheme: light;
+  color: #2c3e50;
+  background-color: #ffffff;
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizeLegidity;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+  color: #2c3e50;
+  background-color: #ffffff;
+}
+
+#root {
+  width: 100%;
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Reset any default styles that might interfere */
+a {
+  font-weight: 500;
+  color: #4f46e5;
+  text-decoration: inherit;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+a:hover {
+  color: #3730a3;
+}
+
+h1 {
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #2c3e50;
+}
+
+/* Ensure all inputs have proper styling */
+input, textarea, select {
+  color: #2c3e50 !important;
+  background-color: #ffffff !important;
+  border: 2px solid #e5e7eb;
   font-family: inherit;
-  background-color: #1a1a1a;
+}
+
+input:focus, textarea:focus, select:focus {
+  color: #2c3e50 !important;
+  background-color: #ffffff !important;
+  border-color: #4f46e5;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Override any button defaults */
+button {
+  font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
 }
-button:hover {
-  border-color: #646cff;
-}
+
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Remove dark theme media query */
+/* Ensure light theme always */
+html {
+  color-scheme: light;
+}
+
+/* Ensure placeholder text is visible */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+/* Ensure autofill doesn't break styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #2c3e50 !important;
 }

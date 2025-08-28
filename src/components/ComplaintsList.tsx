@@ -189,22 +189,22 @@ const ComplaintsList: React.FC = () => {
                         ${complaint.emergency ? 'emergency' : ''}
                       `}
                     >
-                      <td>{complaint.grievanceNumber}</td>
-                      <td>{complaint.victimName || 'Unknown'}</td>
-                      <td>
+                      <td data-label="Grievance Number">{complaint.grievanceNumber}</td>
+                      <td data-label="Victim Name">{complaint.victimName || 'Unknown'}</td>
+                      <td data-label="Type">
                         {complaint.complaintType || complaint.category}
                         {complaint.emergency && <span className="emergency-badge">EMERGENCY</span>}
                       </td>
-                      <td>{formatDate(complaint.createdAt)}</td>
-                      <td className={`status ${complaint.status.toLowerCase()}`}>{complaint.status}</td>
-                      <td>
+                      <td data-label="Date">{formatDate(complaint.createdAt)}</td>
+                      <td data-label="Status" className={`status ${complaint.status.toLowerCase()}`}>{complaint.status}</td>
+                      <td data-label="Form Status">
                         {complaint.formSubmitted ? (
                           <span className="form-status submitted">✅ Complete</span>
                         ) : (
                           <span className="form-status pending">⏳ In Progress</span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <button 
                           onClick={() => viewComplaintDetails(complaint.id)}
                           className="view-button"
